@@ -1,6 +1,6 @@
 # envoy-cache
 
-### _Caching in Istio using Envoy proxy_
+### _Caching in Istio using Envoy filters_
 
 > Easy way to implement Caching in istio using Envoy filter. This working code can cache responses irrespective of the cache control the upstream server sends. 
 > The code modifies the cache-control header of the request call and of the upstream response.
