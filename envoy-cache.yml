@@ -1,0 +1,94 @@
+# The Envoy config file to enable caching.
+
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: cache-filter
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_FIRST
+        value:
+          name: envoy.filters.http.lua
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              routes = {
+                "/role"
+              }
+              domains = {
+                "cache-test.example.com"
+              }
+
+              function envoy_on_request(request_handle)
+                local request_headers = request_handle:headers()
+                for _, domain in ipairs(domains) do
+                  if request_headers:get(":authority") == domain and request_headers:get(":method") == "GET" then
+                    request_headers:replace("Cache-Control", "max-age=600")
+                  end
+                end
+              end
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: "envoy.filters.http.cache"
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.cache.v3.CacheConfig"
+            typed_config:
+              "@type": "type.googleapis.com/envoy.extensions.http.cache.simple_http_cache.v3.SimpleHttpCacheConfig"
+              # uncomment the section below and comment the line above to use FileSystemCache
+              # "@type": "type.googleapis.com/envoy.extensions.http.cache.file_system_http_cache.v3.FileSystemHttpCacheConfig"
+              # cache_path: /var/lib/istio/data
+              # manager_config:
+              #   thread_pool:
+              #     thread_count: 1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: response-filter
+  namespace: dev # Please change this namespace to the one where the pods are deployed
+spec:
+  workloadSelector:
+    labels:
+      app: cache-test # Please change this label to deployment of your choice
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.lua
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              function envoy_on_response(response_handle)
+                local response_headers = response_handle:headers()
+                response_headers:replace("Cache-Control", "max-age=600")
+                response_headers:remove("vary")
+              end
