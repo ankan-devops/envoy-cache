@@ -8,12 +8,16 @@
 ## Modifications to be made before using the filter:
 
 1. **Restricting the domain/host over which to apply caching:** Change the domain name (line 29) as per your need. You can also restrict the route/uri over which caching can be applied.
+
 2. **Control the caching time:** Modify the max age of caching by changing the max-age=600 value (line 36 & 89).
-3. **The app deployment/pods needs to be enabled in filter for caching:** Change the labels in workload selector to those of the application pods ehich are to be cached (line 71). Also chnge the namespace to where the app pod is deployed (line 67)   
+
+3. **The app deployment/pods needs to be enabled in filter for caching:** Change the labels in workload selector to those of the application pods ehich are to be cached (line 71). Also chnge the namespace to where the app pod is deployed (line 67).
+  
 4. There are 2 types of caching in envoy
     * SimpleHTTPCache (line 56)
     * FileSystemHttpCache (line 57-61)
-    You can use either of them but not both.
+   
+   _You can use either of them but not both._
 
 ## Demo:
 
